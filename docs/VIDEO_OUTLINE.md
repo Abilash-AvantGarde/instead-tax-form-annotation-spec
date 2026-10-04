@@ -31,7 +31,7 @@ keep moving if you're running long.
 - Open `docs/SPEC.md`, scroll to the field-type catalogue.
 - "There are eight field types: text, currency, number, date, SSN — which is a one-digit-per-cell
   comb style — checkbox, radio-group, and table, which is the repeating one."
-- Open `spec/f1040-page1.annotation.json`, scroll to the `f1040.line1a` field. Show it on screen.
+- Open `spec/f1040.annotation.json`, scroll to the `f1040.line1a` field. Show it on screen.
 - "Here's line 1a, total wages from W-2s. The `box` says page 1, these exact x/y/width/height
   coordinates in PDF points. The `type` is currency. The `value.path` is
   `$.income.w2[*].box1Wages` — that wildcard means 'every W-2's box 1 wages' — and because it's
@@ -61,7 +61,7 @@ keep moving if you're running long.
 - Run:
   ```
   java -jar renderer/target/annotation-renderer.jar \
-    --annotation spec/f1040-page1.annotation.json \
+    --annotation spec/f1040.annotation.json \
     --data data/sample-taxpayer.json \
     --pdf forms/f1040.pdf \
     --out output/f1040-filled.pdf
