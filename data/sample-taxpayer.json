@@ -78,11 +78,13 @@
     "socialSecurityGross": 0,
     "socialSecurityTaxable": 0,
     "capitalGainOrLoss": -1250.00,
-    "additionalIncomeSchedule1": 0
+    "additionalIncomeSchedule1": 0,
+    "totalIncome": 141420.08
   },
   "adjustments": {
     "adjustmentsToIncomeSchedule1": 0
   },
+  "agi": 141420.08,
   "_edgeCases": {
     "note": "Deliberate data-quality edge cases included for the renderer demo:",
     "items": [

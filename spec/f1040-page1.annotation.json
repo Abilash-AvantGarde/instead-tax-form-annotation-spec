@@ -84,13 +84,13 @@
           "type": "ssn", "align": "center", "value": { "path": "$.ssn" }, "format": { "kind": "ssn-mask", "maskPattern": "###-##-####" }, "overflow": "error" },
         { "id": "f1040.dep.relationship", "label": "Relationship", "box": { "page": 1, "x": 145, "y": 348, "width": 90, "height": 10 },
           "type": "text", "align": "left", "value": { "path": "$.relationship" }, "format": { "kind": "text" }, "overflow": "shrink" },
-        { "id": "f1040.dep.livedWithYou", "label": "Check if lived with you more than half of 2025", "box": { "page": 1, "x": 180, "y": 360, "width": 10, "height": 10 },
+        { "id": "f1040.dep.livedWithYou", "label": "Check if lived with you more than half of 2025", "box": { "page": 1, "x": 160, "y": 360, "width": 10, "height": 10 },
           "type": "checkbox", "align": "center", "value": { "path": "$.livedWithYou" }, "format": { "kind": "none", "trueText": "X", "falseText": "" }, "overflow": "error" },
-        { "id": "f1040.dep.fullTimeStudent", "label": "Check if full-time student", "box": { "page": 1, "x": 159, "y": 381, "width": 10, "height": 10 },
+        { "id": "f1040.dep.fullTimeStudent", "label": "Check if full-time student", "box": { "page": 1, "x": 149, "y": 381, "width": 10, "height": 10 },
           "type": "checkbox", "align": "center", "value": { "path": "$.fullTimeStudent" }, "format": { "kind": "none", "trueText": "X", "falseText": "" }, "overflow": "error" },
-        { "id": "f1040.dep.ctc", "label": "Check if Child tax credit", "box": { "page": 1, "x": 159, "y": 403, "width": 10, "height": 10 },
+        { "id": "f1040.dep.ctc", "label": "Check if Child tax credit", "box": { "page": 1, "x": 149, "y": 403, "width": 10, "height": 10 },
           "type": "checkbox", "align": "center", "value": { "path": "$.childTaxCredit" }, "format": { "kind": "none", "trueText": "X", "falseText": "" }, "overflow": "error" },
-        { "id": "f1040.dep.codo", "label": "Check if Credit for other dependents", "box": { "page": 1, "x": 210, "y": 403, "width": 10, "height": 10 },
+        { "id": "f1040.dep.codo", "label": "Check if Credit for other dependents", "box": { "page": 1, "x": 200, "y": 403, "width": 10, "height": 10 },
           "type": "checkbox", "align": "center", "value": { "path": "$.creditForOtherDependents" }, "format": { "kind": "none", "trueText": "X", "falseText": "" }, "overflow": "error" }
       ]
     },
@@ -136,7 +136,7 @@
     { "id": "f1040.line9", "label": "9  Add lines 1z, 2b, 3b, 4b, 5b, 6b, 7a, and 8. This is your total income",
       "box": { "page": 1, "x": 488, "y": 728, "width": 90, "height": 10 },
       "type": "currency", "required": true,
-      "value": { "path": "$.income.w2[*].box1Wages", "aggregate": "sum" },
+      "value": { "path": "$.income.totalIncome" },
       "format": { "kind": "currency", "decimalPlaces": 0, "roundingMode": "half-up", "negativeStyle": "parens" }, "overflow": "shrink" },
     { "id": "f1040.line10", "label": "10  Adjustments to income from Schedule 1, line 26", "box": { "page": 1, "x": 488, "y": 740, "width": 90, "height": 10 },
       "type": "currency",
@@ -145,7 +145,7 @@
     { "id": "f1040.line11a", "label": "11a  Subtract line 10 from line 9. This is your adjusted gross income",
       "box": { "page": 1, "x": 486, "y": 752, "width": 92, "height": 10 },
       "type": "currency", "required": true,
-      "value": { "path": "$.income.w2[*].box1Wages", "aggregate": "sum" },
+      "value": { "path": "$.agi" },
       "format": { "kind": "currency", "decimalPlaces": 0, "roundingMode": "half-up", "negativeStyle": "parens" }, "overflow": "shrink" }
   ]
 }
