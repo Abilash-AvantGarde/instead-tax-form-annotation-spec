@@ -1,0 +1,400 @@
+# Tax Form Annotation Specification (v1.0)
+
+A data structure and file format for describing where to print values on a U.S. tax form PDF,
+how to find those values in a nested taxpayer data set, and how to format them. The format is
+JSON; the normative shape is `spec/annotation.schema.json` (JSON Schema, draft 2020-12). A
+mirrored Java class model lives in `renderer/src/main/java/.../model/` for teams that prefer
+typed classes over raw JSON.
+
+## 1. Overview
+
+An **annotation document** describes one form (e.g. "Form 1040, 2025, page 1") as a flat list of
+**fields**. Each field says:
+
+1. **where** it goes (`box` — page, x, y, width, height),
+2. **what kind** of thing it is (`type` — text, currency, number, date, ssn, checkbox,
+   radio-group, table),
+3. **where its value comes from** (`value.path`, a restricted path into the taxpayer's JSON
+   data, plus an optional `aggregate`),
+4. **how to format** the resolved value (`format`), and
+5. **what to do if it doesn't fit** (`overflow`).
+
+A conformant renderer reads an annotation document plus a taxpayer data document, resolves every
+field's value, formats it, and draws it onto the referenced PDF. The renderer is intentionally
+*not* part of this spec — anyone's "proprietary code" can implement the pipeline in section 6,
+in any language, against any PDF library. This repository ships one reference renderer (Java +
+Apache PDFBox) as proof the spec is implementable, not as the spec itself.
+
+## 2. Coordinate System
+
+**Explicit and non-negotiable for v1:** `coordinateSystem` must be the literal string
+`"pdf-points-top-left"`.
+
+- **Units:** PDF points, 1/72 inch — the native unit PDF content streams use, so a renderer never
+  has to convert.
+- **Origin:** the **top-left** corner of the page.
+- **Axes:** `x` increases rightward, `y` increases **downward**.
+- **Page size:** a standard US Letter page is 612 x 792 points. `sourcePdf.pageSize` records the
+  expected size so a renderer can detect a mismatched template.
+
+This is the opposite of native PDF user-space (which is bottom-left-origin, y increasing
+upward), but it matches how a human reads a page, how `pdftotext -bbox-layout` and most layout
+tools already report coordinates, and how this annotation pack's own coordinates were derived
+(see section 8, "coordinates are approximated"). A renderer using PDFBox's content stream API
+(which *is* bottom-left-origin) does exactly one conversion at draw time: `pdfY = pageHeight -
+annotationY - boxHeight`. See `docs/SPEC.md` section 7 (design decisions) for why top-left was
+chosen over native bottom-left.
+
+The field's `box` is the rectangle **within which text must fit** — not necessarily the entire
+printable cell on the form. Text is drawn left-aligned, right-aligned, or centered inside this
+rectangle per the field's `align`.
+
+## 3. Data-Binding Path Syntax
+
+A **restricted JSONPath-lite** grammar selects values out of the taxpayer data document. It
+supports exactly four constructs:
+
+```
+path        := "$" segment*
+segment     := "." identifier | "[" index "]"
+identifier  := [a-zA-Z_][a-zA-Z0-9_]*
+index       := "*" | [0-9]+
+```
+
+Examples:
+
+| Path | Meaning |
+|---|---|
+| `$.taxpayer.lastName` | a single scalar, nested two levels deep |
+| `$.income.w2[*].box1Wages` | every `box1Wages` across all elements of the `w2` array |
+| `$.dependents[0].ssn` | the SSN of the first dependent, by fixed index |
+| `$.dependents` | the whole array (used as a table's `itemsPath`, not resolved to a scalar) |
+
+**Deliberately NOT supported**, and why:
+
+- **Filters** (`[?(@.code=='DD')]`) and **slices** (`[1:3]`) — these let the annotation file
+  encode conditional *logic*, which belongs in the proprietary application, not in a data file a
+  non-engineer annotator edits. A filtered box-12-code selection is instead expressed as a
+  `table` field with a fixed `itemsPath` and the renderer iterating all instances (see section 5).
+- **Recursive descent** (`..`) — would make it possible to accidentally bind a field to the
+  wrong value if the data shape changes anywhere in the document; every binding must name its
+  full path explicitly.
+- **Arithmetic or function calls inside the path** (e.g. `sum($.a, $.b)`) — aggregation is
+  instead a separate, closed-vocabulary field (`aggregate`), never an expression language. This
+  keeps the annotation file *inert data*, auditable by inspection, with zero code execution risk.
+
+When a path contains a `[*]` wildcard, it resolves to a **list** of values and the field's
+`value.aggregate` is required:
+
+| `aggregate` | Behavior |
+|---|---|
+| `sum` | Adds all resolved numeric values. Used for e.g. Form 1040 line 1a = sum of every W-2's box 1 wages. |
+| `count` | Counts resolved (non-null) values. |
+| `first` | Takes the first resolved value, ignoring the rest. |
+| `join` | Concatenates resolved values as strings, separated by `joinSeparator` (default `", "`). |
+
+If a path resolves to nothing (missing data) and the binding has a `default`, the default is
+used silently. If there is no `default` and the field is `required: true`, this is a **diagnostic
+error**, not a silent blank. If the field is not required, a missing value renders as blank with
+a diagnostic *warning*.
+
+## 4. Field Types and Formatting
+
+Every field has a `type` and, for most types, a `format` block. `format.kind` selects which
+formatting rules apply.
+
+### `text`
+
+Plain string value, optionally uppercased.
+
+```json
+{
+  "id": "f1040.address.city", "label": "City, town, or post office",
+  "box": { "page": 1, "x": 36, "y": 168, "width": 295, "height": 12 },
+  "type": "text", "required": true, "align": "left",
+  "value": { "path": "$.address.city" },
+  "format": { "kind": "text" },
+  "overflow": "shrink"
+}
+```
+
+### `currency`
+
+IRS whole-dollar convention: round **half-up** to the nearest dollar (never truncate, never
+banker's-round), insert thousands separators, and render negative amounts in **parentheses**
+(not a leading minus) unless `negativeStyle` is overridden to `"minus"`.
+
+```json
+{
+  "id": "f1040.line7a", "label": "7a  Capital gain or (loss)",
+  "box": { "page": 1, "x": 488, "y": 692, "width": 90, "height": 10 },
+  "type": "currency", "required": true,
+  "value": { "path": "$.income.capitalGainOrLoss" },
+  "format": { "kind": "currency", "decimalPlaces": 0, "roundingMode": "half-up", "negativeStyle": "parens" },
+  "overflow": "shrink"
+}
+```
+A value of `-1250.00` renders as `(1,250)`.
+
+### `number`
+
+Like `currency` minus the dollar semantics (no forced whole-dollar rounding unless configured);
+used for simple counts (e.g. number of qualifying children) where no currency styling applies.
+
+### `date`
+
+Formats an ISO date string per `format.datePattern` (default `MM/DD/YYYY`).
+
+### `ssn` (comb-style)
+
+One digit per visual cell, dash-separated, matching the printed SSN/EIN boxes on IRS forms.
+`format.maskPattern` describes the template (`#` = digit placeholder):
+
+```json
+{
+  "id": "f1040.ssn.you", "label": "Your social security number",
+  "box": { "page": 1, "x": 472, "y": 96, "width": 104, "height": 12 },
+  "type": "ssn", "required": true, "align": "center",
+  "value": { "path": "$.taxpayer.ssn" },
+  "format": { "kind": "ssn-mask", "maskPattern": "###-##-####" },
+  "overflow": "error"
+}
+```
+Raw data is a plain 9-digit string (`"123456789"`); the renderer inserts the dashes at draw
+time. Overflow is `error` by design: a 9-digit field can never need to shrink or truncate — if
+it doesn't fit, something upstream is wrong, and that should halt the render, not hide it.
+
+### `checkbox`
+
+Renders `format.trueText` (default `"X"`) when the resolved value is truthy, `format.falseText`
+(default empty) when falsy. A Yes/No pair (see `f1040.digitalAssets.yes` /
+`f1040.digitalAssets.no` in the sample annotation) is simply two checkbox fields bound to the
+same boolean path with inverted `trueText`/`falseText`.
+
+### `radio-group`
+
+A first-class "exactly one of N boxes" construct — IRS filing-status and similar mutually
+exclusive groups are *not* N independent booleans the annotator must keep consistent by
+convention. One `value.path` resolves to a single value; each `options[]` entry declares its own
+`box` and the `matchValue` that selects it. The renderer draws a mark in **exactly one** option
+box (the one whose `matchValue` equals the resolved value) and treats more-than-one or
+zero-of-N as a diagnostic, since that can only mean a data or annotation bug.
+
+```json
+{
+  "id": "f1040.filingStatus", "label": "Filing Status - Check only one box",
+  "box": { "page": 1, "x": 36, "y": 206, "width": 460, "height": 36 },
+  "type": "radio-group",
+  "value": { "path": "$.filingStatus" },
+  "options": [
+    { "id": "single", "box": { "page": 1, "x": 99, "y": 208, "width": 10, "height": 10 }, "matchValue": "single" },
+    { "id": "marriedFilingJointly", "box": { "page": 1, "x": 99, "y": 220, "width": 10, "height": 10 }, "matchValue": "marriedFilingJointly" }
+  ]
+}
+```
+
+### `table` (repeating, rows or columns)
+
+See section 5 below — this is the field type the brief specifically calls out as the hard part.
+
+## 5. Repeating Fields: `table`
+
+A `table` field repeats a small set of sub-field templates (`columns`) once per element of an
+array in the taxpayer data (`itemsPath`), up to `maxInstances` physical slots printed on the
+form. Each sub-field template is positioned **relative to instance 0**; the renderer adds
+`pitch` (a fixed `{dx, dy}` offset) × the instance index to every sub-field's box to find where
+instance *N* goes.
+
+**Why an `axis` of `rows` *or* `columns`:** most repeating form data (e.g. a list of W-2
+withholding entries) prints as additional rows going *down* the page. But Form 1040's own
+Dependents section is the opposite: four dependent slots are laid out **side by side**, each a
+vertical strip of sub-fields (first name, last name, SSN, relationship, checkboxes) with the next
+dependent's slot offset horizontally, not vertically. A spec that assumed "repeating always means
+new rows" could not correctly describe the single most common repeating structure on the most
+common form. Making the axis an explicit, declared property (not inferred from box geometry)
+means a renderer never has to guess, and an annotation reviewer can see the layout intent at a
+glance.
+
+```json
+{
+  "id": "f1040.dependents",
+  "label": "Dependents",
+  "box": { "page": 1, "x": 145, "y": 310, "width": 432, "height": 110 },
+  "type": "table",
+  "axis": "columns",
+  "itemsPath": "$.dependents",
+  "maxInstances": 4,
+  "pitch": { "dx": 108, "dy": 0 },
+  "columns": [
+    {
+      "id": "f1040.dep.firstName", "label": "Dependent first name",
+      "box": { "page": 1, "x": 145, "y": 312, "width": 90, "height": 10 },
+      "type": "text", "align": "left",
+      "value": { "path": "$.firstName" },
+      "format": { "kind": "text" }, "overflow": "shrink"
+    }
+  ]
+}
+```
+
+Each sub-field's `value.path` is evaluated **relative to the current array element**, not the
+document root — i.e. inside a `table`, `$` means "the current dependent", so `$.firstName` reads
+`dependents[N].firstName`.
+
+**Instance-count handling:** if the data array has fewer elements than `maxInstances`, the
+remaining slots are simply left blank (no diagnostic). If it has *more* elements than
+`maxInstances` (e.g. a fifth dependent), the renderer reports an `OVERFLOW_TABLE_INSTANCES`
+diagnostic naming the field and the excess count, and draws only the first `maxInstances`
+in document order — it never silently drops data without telling the operator, and it never
+fails the entire render over one table being oversubscribed (see section 9, future enhancement:
+continuation pages).
+
+**What this spec does *not* attempt (see section 9):** nesting one `table` inside another (e.g.
+each W-2 having its own repeating list of box-12 codes). Every reference implementation surveyed
+for this project stopped at one level of repetition; this spec makes the same scope cut
+deliberately rather than half-implementing two-level nesting. A single level, implemented
+*correctly* end-to-end (iterate `itemsPath`, compute per-instance offsets, draw each sub-field),
+is worth more than a declared-but-unexecuted nested feature — which is exactly the gap found in
+the weakest reference submission reviewed during this project's research phase.
+
+## 6. Rendering Pipeline (Renderer Contract)
+
+A conformant renderer MUST execute these steps, in this order, once for the whole document
+before drawing anything:
+
+1. **Load & validate** the annotation JSON against `annotation.schema.json`. Reject the whole
+   document if it doesn't conform.
+2. **Verify the source PDF** matches `sourcePdf` — SHA-256 of the file bytes, page count, and
+   (if present) page size. A mismatch is a hard error: refuse to render rather than draw
+   coordinates onto a form revision they weren't authored against.
+3. **For every field** (expanding `table` fields into one resolved instance per array element,
+   up to `maxInstances`):
+   a. **Resolve** `value.path` against the taxpayer data.
+   b. **Aggregate** if the path produced multiple values (`sum`/`count`/`first`/`join`).
+   c. **Apply default / required check** — missing + has `default` → use it; missing + required
+      + no default → record a diagnostic error; missing + optional → blank + warning.
+   d. **Format** the resolved value per `format`.
+   e. **Fit / overflow** — measure the formatted string against the box width at `fontSize`; if
+      it doesn't fit, apply the field's `overflow` policy (`shrink` down to `minFontSize`,
+      `truncate` with an ellipsis, or `error`).
+4. **Collect every diagnostic from every field in this one pass** — do not stop at the first
+   problem. This is the "plan" stage, and it produces a single, complete report.
+5. **Refuse to draw anything if any diagnostic is an error-level diagnostic** (missing required
+   field, SSN overflow, radio-group with zero or multiple matches, PDF hash mismatch). Print the
+   full diagnostic list and exit non-zero. This mirrors how a real annotator would want to fix a
+   broken data file in one review pass rather than one error at a time.
+6. **Draw** — only once step 5 passes — open the real PDF, and for every resolved, formatted
+   field, paint the text (or checkbox/radio mark) at its box coordinates via the renderer's PDF
+   library of choice. Save to the output path.
+
+Steps 1-4 ("plan": resolve + format + decide what would be drawn and why) are kept strictly
+separate from step 6 ("draw": actually paint pixels). This is what makes the spec
+renderer-agnostic in practice, not just in principle — the plan stage can be unit-tested with no
+PDF library at all, and the same plan could feed a browser-canvas preview, a different PDF
+library, or a non-PDF output entirely.
+
+## 7. Design Decisions
+
+**Why PDF points with an explicit top-left origin, not normalized 0-1 coordinates.** Normalized
+coordinates survive page-size changes gracefully, but every coordinate-extraction tool available
+for this project (`pdftotext -bbox-layout`, PDFBox's own glyph positions) reports points directly;
+converting to points and back to a fraction at authoring time, then back to points again at
+render time, is two unnecessary lossy round-trips for a spec whose target (printed tax forms)
+has an effectively fixed page size (US Letter) anyway. Points also let an annotator sanity-check
+a coordinate by comparing it directly to what a PDF editor's ruler shows. Top-left origin (rather
+than PDF's native bottom-left) was chosen specifically because every layout/extraction tool used
+to derive this annotation pack's actual coordinates reports top-left already — matching it
+removes a manual y-flip from the authoring workflow, at the cost of one documented, one-line flip
+inside the renderer at draw time.
+
+**Why a restricted path syntax, not full JSONPath (RFC 9535) or a general expression language.**
+A tax-form annotation file is data that a non-engineer reviewer may open and edit directly. Full
+JSONPath's filter expressions (`?(@.code=='DD')`) and functions are a real, if small, expression
+language — accepting them means an annotation file can encode conditional logic, which blurs the
+line between "declarative data" and "a program," and makes the file harder to statically audit
+for what it depends on. The four-construct grammar here (member access, numeric index, wildcard,
+nothing else) is expressive enough for every field actually seen on Form 1040's first page and
+for the dependents/W-2 repeating structures, and it has the useful property that any path can be
+read aloud and matched to a JSON Pointer-like mental model without executing anything.
+
+**Why `table` supports a `columns` axis, not just `rows`.** Addressed in depth in section 5 —
+summarized, a spec that only supports downward-repeating rows cannot correctly describe the
+single most prominent repeating structure on the most common U.S. tax form (the Dependents
+section, which repeats sideways). Making the axis an explicit declared field rather than
+inferring it from box geometry means the annotation itself documents its own layout intent.
+
+**Why the renderer is a separate artifact from the spec, not bundled as "the" implementation.**
+The brief explicitly asks for a structure someone else can build "their proprietary code"
+against. Treating the Java renderer as a reference implementation (one possible conformant
+consumer) rather than as part of the spec keeps the schema and the Java POJOs the actual
+contract, and keeps the rendering pipeline (section 6) expressed as an ordered list of
+responsibilities rather than as a specific PDFBox API call sequence.
+
+**Why overflow policy is per-field, not one global default.** A 9-digit SSN field can never
+usefully "shrink" its way to correctness — if it doesn't fit, the mask pattern or box is wrong,
+and that should halt the render (`error`). A free-text address field, by contrast, should almost
+always `shrink` first and only ever `truncate` as a last resort. Collapsing these into one global
+policy would force every field to tolerate the worst case of any other field's needs.
+
+**Why SHA-256-pinning the source PDF is mandatory, not optional.** The single most valuable
+pattern found across every reference implementation surveyed for this project: when the IRS
+revises a form (even a whitespace-only PDF regeneration), coordinates silently point at the wrong
+box with no runtime signal unless the renderer checks. Making `sourcePdf.sha256` a required field
+(not a nice-to-have) turns that failure mode from "a tax form prints bank routing numbers over
+someone's name" into a loud, immediate refusal to render.
+
+**Why aggregation is a closed enum (`sum`/`count`/`first`/`join`), not an arbitrary function
+call.** Keeps the same inertness guarantee as the path-syntax decision above: a reviewer can see
+every possible aggregation behavior the format can express just by reading this document, with
+no risk of an annotation file embedding executable logic.
+
+## 8. Coordinates Were Approximated From Layout Analysis
+
+The coordinates in `spec/f1040-page1.annotation.json` were derived from `pdftotext
+-bbox-layout` word-level bounding boxes against the real downloaded `forms/f1040.pdf` (2025
+revision), cross-referenced by hand against `pdftotext -layout` to confirm each label's actual
+line position, not guessed or fabricated. Every box's x/y was anchored to the nearest real text
+label on the page (e.g. the `1a` line-number glyph, the `Yes`/`No` digital-assets labels, the
+`(1) First name` dependents-table header) and the "answer area" to the right/below it was
+estimated from the visible rule lines and column boundaries in the extracted text layout. This
+is a sound and defensible first pass, consistent with how a real annotator would start — but it
+is explicitly **not** pixel-verified against a rendered image of the page, and a production
+annotation pack would still need one visual fine-tuning pass in a PDF editor (or the renderer's
+own `--debug` overlay, see section 9) before being trusted for real tax filings.
+
+## 9. Future Enhancements
+
+- **Nested repeats (repeat-of-repeats).** Each W-2 having its own repeating list of box-12 codes
+  is the natural next level of "deeply nested data" this spec does not yet attempt. The `table`
+  type's `columns` could itself contain a `table`, with the inner `itemsPath` resolved relative
+  to the outer instance, if a real use case demands it — deliberately deferred here in favor of
+  getting one level fully correct (see section 5).
+- **Conditional "print only if" fields.** A declarative (non-executable) `when` clause
+  (`{"path": "...", "equals": ...}`) so a field only draws when some other value matches,
+  without introducing a general expression language — e.g. only draw the HOH/QSS qualifying
+  child name field when `filingStatus` is one of those two statuses.
+- **Continuation pages for table overflow.** Right now, more data instances than
+  `maxInstances` produce a loud diagnostic but the excess is simply not drawn. A real
+  implementation should support an optional `continuationPage` pointing at a second annotation
+  fragment (e.g. Schedule 8812 or a dependents continuation sheet) that absorbs the overflow.
+- **Template-PDF hash pinning across *revisions*, not just exact match.** Today a hash mismatch
+  is a hard stop. A `knownRevisions: [{sha256, coordinateDelta}]` list could let a renderer
+  auto-correct for a confirmed-compatible IRS revision rather than only ever refuse or proceed
+  blindly.
+- **A visual click-to-annotate authoring tool.** Render the PDF to canvas, let a reviewer click
+  and drag boxes, and emit this JSON directly — would remove the "approximated from layout
+  analysis, needs visual fine-tuning" caveat in section 8 entirely.
+- **SSN / routing-number / EIN checksum validation.** The `ssn` type currently only validates
+  shape (9 digits) via its mask pattern; real-world data entry errors (transposed digits) are
+  not caught. A lightweight checksum or known-invalid-range check (e.g. SSNs starting `000`,
+  `666`, or `900-999` are never valid) would catch a class of bugs before they reach print.
+- **Hybrid AcroForm + drawn-text output.** When the source PDF has native fillable fields, a
+  renderer could fill those directly (more accessible, more robust to minor layout drift) and
+  fall back to coordinate-based drawing only for static-rendered forms — today this spec commits
+  to coordinate-based drawing exclusively.
+
+## 10. Non-Goals (v1)
+
+To keep scope honest: this spec does not attempt e-file XML generation, scanned-form box
+auto-detection, non-Latin script layout, or multi-year form migration tooling. These are named
+here, not silently absent.
