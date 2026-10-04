@@ -116,6 +116,17 @@ public class FieldPlanner {
             arrayNode.forEach(items::add);
         }
 
+        if (field.axis != null) {
+            boolean axisMatchesPitch = "columns".equals(field.axis)
+                    ? field.pitch.dx != 0
+                    : field.pitch.dy != 0;
+            if (!axisMatchesPitch) {
+                plan.diagnostics.add(Diagnostic.warning(field.id, "TABLE_AXIS_PITCH_MISMATCH",
+                        "axis='" + field.axis + "' but pitch does not move along that axis (dx=" +
+                                field.pitch.dx + ", dy=" + field.pitch.dy + ")."));
+            }
+        }
+
         int drawCount = Math.min(items.size(), field.maxInstances);
         for (int i = 0; i < drawCount; i++) {
             JsonNode instanceScope = items.get(i);

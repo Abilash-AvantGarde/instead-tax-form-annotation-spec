@@ -32,7 +32,16 @@ import java.util.Map;
  */
 public final class RenderMain {
 
-    public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
+    public static void main(String[] args) {
+        try {
+            run(args);
+        } catch (Exception e) {
+            System.err.println("ERROR: " + e.getMessage());
+            System.exit(1);
+        }
+    }
+
+    private static void run(String[] args) throws IOException, NoSuchAlgorithmException {
         Map<String, String> flags = parseArgs(args);
         boolean debug = args.length > 0 && java.util.Arrays.asList(args).contains("--debug");
 
@@ -63,6 +72,16 @@ public final class RenderMain {
             if (doc.sourcePdf != null && doc.sourcePdf.pageCount > 0 && pdf.getNumberOfPages() != doc.sourcePdf.pageCount) {
                 preflight.add(Diagnostic.error("sourcePdf", "PDF_PAGE_COUNT_MISMATCH",
                         "Annotation expects " + doc.sourcePdf.pageCount + " pages but PDF has " + pdf.getNumberOfPages() + "."));
+            }
+            if (doc.sourcePdf != null && doc.sourcePdf.pageSize != null && pdf.getNumberOfPages() > 0) {
+                var box = pdf.getPage(0).getMediaBox();
+                double expectedW = doc.sourcePdf.pageSize.width;
+                double expectedH = doc.sourcePdf.pageSize.height;
+                if (Math.abs(box.getWidth() - expectedW) > 1 || Math.abs(box.getHeight() - expectedH) > 1) {
+                    preflight.add(Diagnostic.error("sourcePdf", "PDF_PAGE_SIZE_MISMATCH",
+                            "Annotation expects page size " + expectedW + "x" + expectedH +
+                                    " but page 1 is " + box.getWidth() + "x" + box.getHeight() + "."));
+                }
             }
 
             // Plan stage: resolve + aggregate + format + decide overflow, across the whole document.

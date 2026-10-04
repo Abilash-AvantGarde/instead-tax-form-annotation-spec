@@ -31,6 +31,20 @@ public final class ValueFormatter {
         };
     }
 
+    private static RoundingMode parseRoundingMode(String mode) {
+        if (mode == null) {
+            return RoundingMode.HALF_UP;
+        }
+        return switch (mode) {
+            case "half-up" -> RoundingMode.HALF_UP;
+            case "half-down" -> RoundingMode.HALF_DOWN;
+            case "half-even" -> RoundingMode.HALF_EVEN;
+            case "floor" -> RoundingMode.FLOOR;
+            case "ceiling" -> RoundingMode.CEILING;
+            default -> throw new IllegalArgumentException("Unknown roundingMode: " + mode);
+        };
+    }
+
     private static BigDecimal toBigDecimal(Object raw) {
         if (raw instanceof BigDecimal bd) {
             return bd;
@@ -41,11 +55,12 @@ public final class ValueFormatter {
         return new BigDecimal(String.valueOf(raw));
     }
 
-    /** IRS whole-dollar convention: half-up rounding, thousands separators, parens for negatives. */
+    /** IRS whole-dollar convention by default: half-up rounding, thousands separators, parens for negatives. */
     private static String formatCurrency(Object raw, FormatSpec format) {
         BigDecimal value = toBigDecimal(raw);
         int places = format != null ? format.decimalPlaces : 0;
-        BigDecimal rounded = value.setScale(places, RoundingMode.HALF_UP);
+        RoundingMode roundingMode = parseRoundingMode(format != null ? format.roundingMode : null);
+        BigDecimal rounded = value.setScale(places, roundingMode);
         boolean negative = rounded.signum() < 0;
         BigDecimal magnitude = rounded.abs();
 

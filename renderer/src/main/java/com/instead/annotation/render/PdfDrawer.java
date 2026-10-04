@@ -52,7 +52,10 @@ public class PdfDrawer {
                     case "center" -> pdfX + ((float) d.box().width() - textWidth) / 2f;
                     default -> pdfX + (float) d.box().width() - textWidth; // right
                 };
-                // Vertically center the text within the box.
+                // Vertically center the text within the box. PDFBox positions text by its
+                // baseline, not its visual center, so centering by height alone sits text too
+                // low; nudging up by ~20% of the font size approximates typical descender
+                // height for the standard fonts and keeps glyphs visually centered.
                 float drawY = pdfY + ((float) d.box().height() - fontSize) / 2f + fontSize * 0.2f;
 
                 cs.beginText();
