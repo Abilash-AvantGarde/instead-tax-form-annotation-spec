@@ -1,0 +1,94 @@
+{
+  "taxpayer": {
+    "firstName": "Jordan",
+    "middleInitial": "M",
+    "lastName": "Alvarez",
+    "ssn": "123456789"
+  },
+  "spouse": {
+    "firstName": "Casey",
+    "middleInitial": "",
+    "lastName": "Alvarez",
+    "ssn": "234567891"
+  },
+  "filingStatus": "marriedFilingJointly",
+  "address": {
+    "street": "482 Larkspur Avenue",
+    "aptNo": "",
+    "city": "Boulder",
+    "state": "CO",
+    "zip": "80302"
+  },
+  "digitalAssets": true,
+  "mainHomeInUsOver6Months": true,
+  "presidentialCampaignFundYou": false,
+  "presidentialCampaignFundSpouse": false,
+  "dependents": [
+    {
+      "firstName": "Maya",
+      "lastName": "Alvarez",
+      "ssn": "345678912",
+      "relationship": "Daughter",
+      "livedWithYou": true,
+      "fullTimeStudent": true,
+      "childTaxCredit": true,
+      "creditForOtherDependents": false
+    },
+    {
+      "firstName": "Owen",
+      "lastName": "Alvarez",
+      "ssn": "456789123",
+      "relationship": "Son",
+      "livedWithYou": true,
+      "fullTimeStudent": false,
+      "childTaxCredit": true,
+      "creditForOtherDependents": false
+    },
+    {
+      "firstName": "Priya",
+      "lastName": "Alvarez",
+      "ssn": "567891234",
+      "relationship": "Daughter",
+      "livedWithYou": true,
+      "childTaxCredit": false,
+      "creditForOtherDependents": true
+    }
+  ],
+  "income": {
+    "w2": [
+      {
+        "employer": "Northside Robotics LLC",
+        "box1Wages": 86250.00,
+        "box2FederalTaxWithheld": 11430.00
+      },
+      {
+        "employer": "Casey's employer, Alpine Design Co",
+        "box1Wages": 54120.50,
+        "box2FederalTaxWithheld": 6208.11
+      }
+    ],
+    "taxExemptInterest": 0,
+    "taxableInterest": 1324.18,
+    "qualifiedDividends": 410.00,
+    "ordinaryDividends": 975.40,
+    "iraDistributionsGross": 0,
+    "iraDistributionsTaxable": 0,
+    "pensionsGross": 0,
+    "pensionsTaxable": 0,
+    "socialSecurityGross": 0,
+    "socialSecurityTaxable": 0,
+    "capitalGainOrLoss": -1250.00,
+    "additionalIncomeSchedule1": 0
+  },
+  "adjustments": {
+    "adjustmentsToIncomeSchedule1": 0
+  },
+  "_edgeCases": {
+    "note": "Deliberate data-quality edge cases included for the renderer demo:",
+    "items": [
+      "dependents[2] omits an optional 'fullTimeStudent' field to exercise the format default-value path.",
+      "income.capitalGainOrLoss is negative to exercise parenthesized negative-currency formatting.",
+      "4 dependents are NOT present (only 3) so the dependents table demonstrates instances below maxInstances; see docs/SPEC.md for what happens when instances EXCEED maxInstances."
+    ]
+  }
+}
