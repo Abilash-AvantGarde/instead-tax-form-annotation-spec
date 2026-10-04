@@ -2,3 +2,5 @@ target/
 *.class
 .DS_Store
 *.log
+output/*.pdf
+renderer/dependency-reduced-pom.xml

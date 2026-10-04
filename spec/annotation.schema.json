@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://instead.example/schemas/annotation.schema.json",
+  "title": "Tax Form Field Annotation",
+  "description": "Defines how a single logical annotation document maps taxpayer data onto the printable boxes of one tax form PDF. See docs/SPEC.md for the full specification, grammar and worked examples.",
+  "type": "object",
+  "required": ["formId", "taxYear", "sourcePdf", "coordinateSystem", "fields"],
+  "additionalProperties": false,
+  "properties": {
+    "formId": {
+      "type": "string",
+      "description": "Stable identifier for the form, e.g. 'f1040'.",
+      "pattern": "^[a-z0-9_-]+$"
+    },
+    "formTitle": {
+      "type": "string",
+      "description": "Human-readable form title, e.g. 'Form 1040 (2025)'."
+    },
+    "taxYear": {
+      "type": "integer",
+      "minimum": 1990,
+      "maximum": 2100
+    },
+    "revision": {
+      "type": "string",
+      "description": "Free-text revision/version marker for this annotation pack, e.g. '2025-rev-1'."
+    },
+    "sourcePdf": {
+      "type": "object",
+      "description": "Pins this annotation to the exact PDF it was authored against, so a renderer can refuse to run against a form the IRS has silently revised.",
+      "required": ["fileName", "sha256", "pageCount"],
+      "additionalProperties": false,
+      "properties": {
+        "fileName": { "type": "string" },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA-256 hex digest of the exact PDF file bytes this annotation was authored against."
+        },
+        "pageCount": { "type": "integer", "minimum": 1 },
+        "pageSize": {
+          "type": "object",
+          "description": "Expected page size in points for the pages referenced by this annotation (PDF default letter is 612x792).",
+          "properties": {
+            "width": { "type": "number", "exclusiveMinimum": 0 },
+            "height": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        }
+      }
+    },
+    "coordinateSystem": {
+      "type": "string",
+      "const": "pdf-points-top-left",
+      "description": "Declares the coordinate convention for every box in this document: units are PDF points (1/72 inch), origin (0,0) is the TOP-LEFT corner of the page, x increases rightward, y increases DOWNWARD. This is the only value this spec version supports; it is still required explicitly so a future version can introduce an alternative without breaking old consumers silently."
+    },
+    "fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/field" }
+    }
+  },
+  "$defs": {
+    "box": {
+      "type": "object",
+      "description": "A rectangle on one page of the PDF, in points, measured from the top-left corner of that page.",
+      "required": ["page", "x", "y", "width", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "page": { "type": "integer", "minimum": 1, "description": "1-based page index." },
+        "x": { "type": "number", "minimum": 0, "description": "Distance from the left edge of the page, in points." },
+        "y": { "type": "number", "minimum": 0, "description": "Distance from the TOP edge of the page, in points." },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "valueBinding": {
+      "type": "object",
+      "description": "Binds a field to a value in the nested taxpayer data set using the restricted path syntax defined in docs/SPEC.md.",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Restricted JSONPath-lite expression, e.g. '$.income.w2[*].box1Wages'. Must begin with '$'.",
+          "pattern": "^\\$(\\.[a-zA-Z_][a-zA-Z0-9_]*|\\[(\\*|[0-9]+)\\])*$"
+        },
+        "aggregate": {
+          "type": "string",
+          "enum": ["sum", "count", "first", "join"],
+          "description": "Required when the path resolves to multiple values (i.e. contains a wildcard '[*]' segment). 'join' concatenates with joinSeparator."
+        },
+        "joinSeparator": {
+          "type": "string",
+          "description": "Separator used when aggregate is 'join'. Defaults to ', '.",
+          "default": ", "
+        },
+        "default": {
+          "description": "Value substituted when the path resolves to nothing (missing optional data). If absent and the field is required, a missing resolution is a diagnostic error.",
+          "type": ["string", "number", "boolean", "null"]
+        }
+      }
+    },
+    "formatSpec": {
+      "type": "object",
+      "description": "Formatting rules applied to the resolved raw value before it is drawn. Which properties are meaningful depends on the field's type (see docs/SPEC.md).",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["currency", "number", "date", "ssn-mask", "text", "none"]
+        },
+        "decimalPlaces": { "type": "integer", "minimum": 0, "maximum": 4, "default": 0 },
+        "roundingMode": {
+          "type": "string",
+          "enum": ["half-up"],
+          "description": "IRS whole-dollar rounding is half-up (0.50 rounds away from zero). Only mode supported in v1."
+        },
+        "negativeStyle": {
+          "type": "string",
+          "enum": ["parens", "minus"],
+          "default": "parens",
+          "description": "How negative currency/number amounts are displayed. IRS forms conventionally use parentheses, e.g. (1,234)."
+        },
+        "thousandsSeparator": { "type": "boolean", "default": true },
+        "datePattern": {
+          "type": "string",
+          "description": "Token pattern for 'date' kind, e.g. 'MM/DD/YYYY'.",
+          "default": "MM/DD/YYYY"
+        },
+        "maskPattern": {
+          "type": "string",
+          "description": "Mask template for 'ssn-mask', using '#' for a digit, e.g. '###-##-####'.",
+          "default": "###-##-####"
+        },
+        "uppercase": { "type": "boolean", "default": false },
+        "trueText": { "type": "string", "default": "X", "description": "Glyph drawn in a checkbox when the resolved value is truthy." },
+        "falseText": { "type": "string", "default": "", "description": "Glyph drawn when falsy (usually nothing)." }
+      }
+    },
+    "overflowPolicy": {
+      "type": "string",
+      "enum": ["shrink", "truncate", "error"],
+      "default": "shrink",
+      "description": "Behavior when formatted text does not fit the box width: shrink the font size down to a floor, truncate with an ellipsis, or treat as a hard diagnostic error and skip drawing."
+    },
+    "field": {
+      "type": "object",
+      "required": ["id", "label", "box", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "Stable identifier, unique within the document, e.g. 'f1040.line1a'."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable label copied verbatim from the form (not a tax explanation), e.g. 'Total amount from Form(s) W-2, box 1'."
+        },
+        "box": { "$ref": "#/$defs/box" },
+        "type": {
+          "type": "string",
+          "enum": ["text", "currency", "number", "date", "ssn", "checkbox", "radio-group", "table"]
+        },
+        "required": { "type": "boolean", "default": false },
+        "value": { "$ref": "#/$defs/valueBinding" },
+        "format": { "$ref": "#/$defs/formatSpec" },
+        "overflow": { "$ref": "#/$defs/overflowPolicy" },
+        "fontSize": { "type": "number", "exclusiveMinimum": 0, "default": 9 },
+        "minFontSize": { "type": "number", "exclusiveMinimum": 0, "default": 6, "description": "Floor used by the 'shrink' overflow policy." },
+        "align": { "type": "string", "enum": ["left", "right", "center"], "default": "right" },
+
+        "options": {
+          "type": "array",
+          "description": "For type 'radio-group' only: the set of mutually exclusive options, exactly one of which may be selected.",
+          "items": {
+            "type": "object",
+            "required": ["id", "box", "matchValue"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string" },
+              "box": { "$ref": "#/$defs/box" },
+              "matchValue": {
+                "description": "The resolved value that selects this option (string/boolean/number equality).",
+                "type": ["string", "number", "boolean"]
+              },
+              "mark": { "type": "string", "default": "X" }
+            }
+          }
+        },
+
+        "axis": {
+          "type": "string",
+          "enum": ["rows", "columns"],
+          "description": "For type 'table' only: whether repeating instances lay out downward (rows) or sideways (columns, e.g. the 1040 dependents table)."
+        },
+        "itemsPath": {
+          "type": "string",
+          "description": "For type 'table' only: a path (same restricted syntax, no trailing [*] required) selecting the repeating array in the taxpayer data, e.g. '$.dependents'."
+        },
+        "maxInstances": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "For type 'table' only: number of physical slots printed on the form. Extra data instances beyond this are reported as an overflow diagnostic, never silently dropped."
+        },
+        "pitch": {
+          "type": "object",
+          "description": "For type 'table' only: the fixed offset from one instance's origin to the next, added (instanceIndex) times to every sub-field box.",
+          "required": ["dx", "dy"],
+          "additionalProperties": false,
+          "properties": {
+            "dx": { "type": "number" },
+            "dy": { "type": "number" }
+          }
+        },
+        "columns": {
+          "type": "array",
+          "description": "For type 'table' only: sub-field templates, one per column/row of data, positioned relative to instance 0 and repeated via 'pitch' for each subsequent instance.",
+          "items": { "$ref": "#/$defs/field" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "type": { "const": "radio-group" } } },
+          "then": { "required": ["options"] }
+        },
+        {
+          "if": { "properties": { "type": { "const": "table" } } },
+          "then": { "required": ["axis", "itemsPath", "maxInstances", "pitch", "columns"] }
+        },
+        {
+          "if": {
+            "properties": { "type": { "enum": ["text", "currency", "number", "date", "ssn", "checkbox"] } }
+          },
+          "then": { "required": ["value"] }
+        }
+      ]
+    }
+  }
+}
