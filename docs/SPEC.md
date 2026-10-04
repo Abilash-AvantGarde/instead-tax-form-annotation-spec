@@ -262,8 +262,12 @@ the weakest reference submission reviewed during this project's research phase.
 A conformant renderer MUST execute these steps, in this order, once for the whole document
 before drawing anything:
 
-1. **Load & validate** the annotation JSON against `annotation.schema.json`. Reject the whole
-   document if it doesn't conform.
+1. **Load the annotation JSON**, which SHOULD be validated against `annotation.schema.json`
+   before being handed to a renderer — this is a repository-level authoring check (see the
+   README's validation command), not something the reference renderer re-checks itself at
+   render time. A renderer that *does* embed schema validation directly is free to reject a
+   non-conforming document at this step; the reference implementation here relies on the
+   external check instead, to keep the renderer's own dependency surface small.
 2. **Verify the source PDF** matches `sourcePdf` — SHA-256 of the file bytes, page count, and
    (if present) page size. A mismatch is a hard error: refuse to render rather than draw
    coordinates onto a form revision they weren't authored against.
@@ -398,3 +402,17 @@ own `--debug` overlay, see section 9) before being trusted for real tax filings.
 To keep scope honest: this spec does not attempt e-file XML generation, scanned-form box
 auto-detection, non-Latin script layout, or multi-year form migration tooling. These are named
 here, not silently absent.
+
+**Cross-line tax arithmetic is explicitly out of scope.** A real Form 1040 has lines whose value
+is a formula over other lines on the same form (e.g. line 9 "total income" = the sum of lines
+1z, 2b, 3b, 4b, 5b, 6b, 7a, and 8; line 11a "AGI" = line 9 minus line 10). This spec's `aggregate`
+mechanism (section 4) only reaches *into the taxpayer data set* — summing an array like every
+W-2's box 1 wages — it has no way to reference *another annotated field on the same form*, and
+deliberately does not grow one: that would mean embedding tax-computation logic in a presentation
+layer, which is exactly the responsibility this spec is trying to keep separate (see "the engine
+computes, the annotation presents" framing in section 7). The expectation is that derived figures
+like total income and AGI already exist as computed values in the taxpayer data set — produced by
+the calling application's own tax engine — and the annotation simply binds to them directly, the
+same as any other field. The worked example in `spec/f1040-page1.annotation.json` follows this:
+`data/sample-taxpayer.json` carries pre-computed `income.totalIncome` and `agi` values that line 9
+and line 11a bind to directly, rather than the annotation attempting to re-derive them.

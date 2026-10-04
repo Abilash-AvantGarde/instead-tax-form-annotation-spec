@@ -70,9 +70,10 @@ The renderer prints every diagnostic it collects (missing required fields, overf
 table-instance overflow) before drawing anything, and refuses to write an output file at all if
 any diagnostic is error-level — see `docs/SPEC.md` section 6 for the full pipeline contract.
 
-Running the first command above against the bundled sample data produces **zero diagnostics**
-and **43 draw operations**, and `output/f1040-filled.pdf` will contain real text you can confirm
-with:
+Running the first command above against the bundled sample data produces **one expected warning**
+(`MISSING_OPTIONAL_VALUE` for a dependent's omitted `fullTimeStudent` field, deliberately left out
+of the sample data to exercise the default-value path) and **44 draw operations**, and
+`output/f1040-filled.pdf` will contain real text you can confirm with:
 
 ```bash
 pdftotext -layout output/f1040-filled.pdf - | less
