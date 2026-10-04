@@ -1,0 +1,62 @@
+{
+  "taxpayer": {
+    "firstName": "Dana",
+    "lastName": "Reyes",
+    "ssn": "321654987"
+  },
+  "filingStatus": "single",
+  "address": {
+    "street": "7 Pine Court",
+    "city": "Reno",
+    "state": "NV",
+    "zip": "89501"
+  },
+  "digitalAssets": false,
+  "dependents": [],
+  "income": {
+    "w2": [
+      {
+        "employer": "Solo Works Inc",
+        "box1Wages": 42000.0,
+        "box2FederalTaxWithheld": 3100.0
+      }
+    ],
+    "taxableInterest": 0,
+    "ordinaryDividends": 0,
+    "capitalGainOrLoss": 0,
+    "totalIncome": 42000.0
+  },
+  "agi": 42000.0,
+  "deductions": {
+    "standardDeduction": 15750,
+    "taxableIncomeBeforeLine14": 15750,
+    "taxableIncome": 26250.0
+  },
+  "tax": {
+    "line16Tax": 2950,
+    "line18": 2950,
+    "line21": 0,
+    "line22": 2950,
+    "totalTax": 2950
+  },
+  "payments": {
+    "federalWithholdingW2": 3100.0,
+    "line25d": 3100.0,
+    "line32OtherPaymentsAndCredits": 0,
+    "totalPayments": 3100.0
+  },
+  "refundOrOwe": {
+    "overpaid": 150,
+    "refundedToYou": 150,
+    "amountYouOwe": 0
+  },
+  "thirdPartyDesignee": {
+    "allowOtherPersonToDiscuss": false
+  },
+  "signature": {
+    "yourOccupation": "Nurse",
+    "signatureDate": "2026-04-10",
+    "phone": "7755550100"
+  },
+  "_fixture": "Bare-minimum single filer: no spouse, no dependents, every optional income/payment line absent. Expect: WARNINGs for missing optional values only, no ERROR, output written."
+}

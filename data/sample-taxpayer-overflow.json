@@ -1,0 +1,163 @@
+{
+  "taxpayer": {
+    "firstName": "Jordan",
+    "middleInitial": "M",
+    "lastName": "Alvarez",
+    "ssn": "123456789"
+  },
+  "spouse": {
+    "firstName": "Casey",
+    "middleInitial": "",
+    "lastName": "Alvarez",
+    "ssn": "234567891"
+  },
+  "filingStatus": "marriedFilingJointly",
+  "address": {
+    "street": "482 Larkspur Avenue",
+    "aptNo": "",
+    "city": "Boulder",
+    "state": "CO",
+    "zip": "80302"
+  },
+  "digitalAssets": true,
+  "mainHomeInUsOver6Months": true,
+  "presidentialCampaignFundYou": false,
+  "presidentialCampaignFundSpouse": false,
+  "dependents": [
+    {
+      "firstName": "Maya",
+      "lastName": "Alvarez",
+      "ssn": "345678912",
+      "relationship": "Daughter",
+      "livedWithYou": true,
+      "fullTimeStudent": true,
+      "childTaxCredit": true,
+      "creditForOtherDependents": false
+    },
+    {
+      "firstName": "Owen",
+      "lastName": "Alvarez",
+      "ssn": "456789123",
+      "relationship": "Son",
+      "livedWithYou": true,
+      "fullTimeStudent": false,
+      "childTaxCredit": true,
+      "creditForOtherDependents": false
+    },
+    {
+      "firstName": "Priya",
+      "lastName": "Alvarez",
+      "ssn": "567891234",
+      "relationship": "Daughter",
+      "livedWithYou": true,
+      "childTaxCredit": false,
+      "creditForOtherDependents": true
+    },
+    {
+      "firstName": "Rafael",
+      "lastName": "Alvarez",
+      "ssn": "678912345",
+      "relationship": "Son",
+      "livedWithYou": true,
+      "fullTimeStudent": true,
+      "childTaxCredit": true,
+      "creditForOtherDependents": false
+    },
+    {
+      "firstName": "Serena",
+      "lastName": "Alvarez",
+      "ssn": "789123456",
+      "relationship": "Daughter",
+      "livedWithYou": true,
+      "fullTimeStudent": false,
+      "childTaxCredit": false,
+      "creditForOtherDependents": true
+    }
+  ],
+  "income": {
+    "w2": [
+      {
+        "employer": "Northside Robotics LLC",
+        "box1Wages": 86250.0,
+        "box2FederalTaxWithheld": 11430.0
+      },
+      {
+        "employer": "Casey's employer, Alpine Design Co",
+        "box1Wages": 54120.5,
+        "box2FederalTaxWithheld": 6208.11
+      }
+    ],
+    "taxExemptInterest": 0,
+    "taxableInterest": 1324.18,
+    "qualifiedDividends": 410.0,
+    "ordinaryDividends": 975.4,
+    "iraDistributionsGross": 0,
+    "iraDistributionsTaxable": 0,
+    "pensionsGross": 0,
+    "pensionsTaxable": 0,
+    "socialSecurityGross": 0,
+    "socialSecurityTaxable": 0,
+    "capitalGainOrLoss": -1250.0,
+    "additionalIncomeSchedule1": 0,
+    "totalIncome": 141420.08
+  },
+  "adjustments": {
+    "adjustmentsToIncomeSchedule1": 0
+  },
+  "agi": 141420.08,
+  "deductions": {
+    "someoneCanClaimYouAsDependent": false,
+    "someoneCanClaimSpouseAsDependent": false,
+    "standardDeduction": 31500,
+    "qbiDeductionForm8995": 0,
+    "additionalDeductionsSchedule1A": 0,
+    "taxableIncomeBeforeLine14": 31500,
+    "taxableIncome": 109920.08
+  },
+  "tax": {
+    "line16Tax": 8213,
+    "schedule2Line3": 0,
+    "line18": 8213,
+    "childTaxCreditAndOdc": 4500,
+    "schedule3Line8": 0,
+    "line21": 4500,
+    "line22": 3713,
+    "otherTaxesSchedule2Line21": 0,
+    "totalTax": 3713
+  },
+  "payments": {
+    "federalWithholdingW2": 17638.11,
+    "federalWithholding1099": 0,
+    "federalWithholdingOther": 0,
+    "line25d": 17638.11,
+    "estimatedTaxPayments2025": 0,
+    "eic": 0,
+    "additionalChildTaxCredit": 0,
+    "americanOpportunityCredit": 0,
+    "refundableAdoptionCredit": 0,
+    "schedule3Line15": 0,
+    "line32OtherPaymentsAndCredits": 0,
+    "totalPayments": 17638.11
+  },
+  "refundOrOwe": {
+    "overpaid": 13925.11,
+    "refundedToYou": 13925.11,
+    "appliedToNextYearEstimatedTax": 0,
+    "amountYouOwe": 0,
+    "estimatedTaxPenalty": 0
+  },
+  "thirdPartyDesignee": {
+    "allowOtherPersonToDiscuss": false
+  },
+  "signature": {
+    "yourOccupation": "Software Engineer",
+    "spouseOccupation": "Graphic Designer",
+    "signatureDate": "2026-04-15",
+    "phone": "3035551212",
+    "email": "jordan.alvarez@example.com"
+  },
+  "paidPreparer": {
+    "selfPrepared": true
+  },
+  "_fixture": "5 dependents against the 1040's 4-slot dependents table. Expect: WARNING (table instance overflow), 4 dependents drawn, 5th reported, output STILL written."
+}

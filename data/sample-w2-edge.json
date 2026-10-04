@@ -1,0 +1,57 @@
+{
+  "employee": {
+    "ssn": "123456789",
+    "firstNameAndInitial": "Jordan M",
+    "lastName": "Alvarez",
+    "suffix": "JR",
+    "addressZip": "482 Larkspur Avenue, Boulder, CO 80302"
+  },
+  "employer": {
+    "ein": "84-1234567",
+    "nameAddressZip": "Mountain Ridge Advanced Manufacturing and Precision Engineering Holdings International LLC, 14820 Continental Divide Industrial Parkway Suite 2200, Broomfield, Colorado 80021-4417",
+    "controlNumber": "NR-00218"
+  },
+  "wages": {
+    "box1Wages": 0.0,
+    "box2FederalTaxWithheld": 0.0,
+    "box3SocialSecurityWages": 0.0,
+    "box4SocialSecurityTaxWithheld": 0.0,
+    "box5MedicareWages": 0.0,
+    "box6MedicareTaxWithheld": 0.0,
+    "box7SocialSecurityTips": 0,
+    "box8AllocatedTips": 0,
+    "box9": "",
+    "box10DependentCareBenefits": 0,
+    "box11NonqualifiedPlans": 0,
+    "statutoryEmployee": true,
+    "retirementPlan": true,
+    "thirdPartySickPay": true,
+    "box12a": {
+      "code": "AA",
+      "amount": 7500.0
+    },
+    "box12b": {
+      "code": "BB",
+      "amount": 2250.5
+    },
+    "box12c": {
+      "code": "EE",
+      "amount": 1000.0
+    },
+    "box12d": {
+      "code": "FF",
+      "amount": 3300.0
+    },
+    "box14aOther": "CO PFML 231.45"
+  },
+  "state": {
+    "state": "CO",
+    "employerStateIdNumber": "CO-0998877",
+    "box16StateWages": 0.0,
+    "box17StateIncomeTax": 0.0,
+    "box18LocalWages": 12500.0,
+    "box19LocalIncomeTax": 312.5,
+    "localityName": "BROOMFIELD"
+  },
+  "_fixture": "W-2 edge cases: zero-wage/zero-withholding employee, a 180-char employer name testing overflow/shrink, all four box-12 code slots populated, all three box-13 checkboxes true, a suffix, and non-zero local (box 18/19/20) figures."
+}
