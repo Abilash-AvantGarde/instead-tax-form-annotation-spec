@@ -1,0 +1,52 @@
+{
+  "employee": {
+    "ssn": "123456789",
+    "firstNameAndInitial": "Jordan M",
+    "lastName": "Alvarez",
+    "suffix": "",
+    "addressZip": "482 Larkspur Avenue, Boulder, CO 80302"
+  },
+  "employer": {
+    "ein": "84-1234567",
+    "nameAddressZip": "Northside Robotics LLC, 900 Innovation Way, Boulder, CO 80301",
+    "controlNumber": "NR-00218"
+  },
+  "wages": {
+    "box1Wages": 86250.00,
+    "box2FederalTaxWithheld": 11430.00,
+    "box3SocialSecurityWages": 86250.00,
+    "box4SocialSecurityTaxWithheld": 5347.50,
+    "box5MedicareWages": 86250.00,
+    "box6MedicareTaxWithheld": 1250.63,
+    "box7SocialSecurityTips": 0,
+    "box8AllocatedTips": 0,
+    "box9": "",
+    "box10DependentCareBenefits": 0,
+    "box11NonqualifiedPlans": 0,
+    "statutoryEmployee": false,
+    "retirementPlan": true,
+    "thirdPartySickPay": false,
+    "box12a": { "code": "D", "amount": 4200.00 },
+    "box12b": { "code": "DD", "amount": 9800.00 },
+    "box12c": { "code": "", "amount": 0 },
+    "box12d": { "code": "", "amount": 0 },
+    "box14aOther": ""
+  },
+  "state": {
+    "state": "CO",
+    "employerStateIdNumber": "CO-0998877",
+    "box16StateWages": 86250.00,
+    "box17StateIncomeTax": 3881.25,
+    "box18LocalWages": 0,
+    "box19LocalIncomeTax": 0,
+    "localityName": ""
+  },
+  "_edgeCases": {
+    "note": "Deliberate data-quality notes for the W-2 renderer demo:",
+    "items": [
+      "Box 4 (social security tax, 6.2%) and box 6 (Medicare tax, 1.45%) are derived from box 1 wages using the statutory 2025 rates - internally consistent, not independently invented numbers.",
+      "box12c/box12d and box7/box8/box9/box10/box11 are legitimately zero/blank for this employee; included anyway so the annotation's default-value path is exercised for every optional box, matching the same pattern used in data/sample-taxpayer.json.",
+      "Represents the same fictional employee (Jordan Alvarez) as data/sample-taxpayer.json's primary taxpayer, as the employer-reported W-2 behind that return's income.w2[0] entry - the figures match (86250.00 wages, 11430.00 federal withholding) to show the two sample files are part of one consistent story, not coincidentally similar."
+    ]
+  }
+}

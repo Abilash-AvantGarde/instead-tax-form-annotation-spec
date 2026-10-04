@@ -354,7 +354,7 @@ no risk of an annotation file embedding executable logic.
 
 ## 8. Coordinates Were Approximated From Layout Analysis
 
-The coordinates in `spec/f1040-page1.annotation.json` were derived from `pdftotext
+The coordinates in `spec/f1040.annotation.json` were derived from `pdftotext
 -bbox-layout` word-level bounding boxes against the real downloaded `forms/f1040.pdf` (2025
 revision), cross-referenced by hand against `pdftotext -layout` to confirm each label's actual
 line position, not guessed or fabricated. Every box's x/y was anchored to the nearest real text
@@ -413,6 +413,6 @@ layer, which is exactly the responsibility this spec is trying to keep separate 
 computes, the annotation presents" framing in section 7). The expectation is that derived figures
 like total income and AGI already exist as computed values in the taxpayer data set — produced by
 the calling application's own tax engine — and the annotation simply binds to them directly, the
-same as any other field. The worked example in `spec/f1040-page1.annotation.json` follows this:
+same as any other field. The worked example in `spec/f1040.annotation.json` follows this:
 `data/sample-taxpayer.json` carries pre-computed `income.totalIncome` and `agi` values that line 9
 and line 11a bind to directly, rather than the annotation attempting to re-derive them.

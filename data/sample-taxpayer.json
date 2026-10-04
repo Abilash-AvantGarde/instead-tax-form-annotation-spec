@@ -85,12 +85,68 @@
     "adjustmentsToIncomeSchedule1": 0
   },
   "agi": 141420.08,
+  "deductions": {
+    "someoneCanClaimYouAsDependent": false,
+    "someoneCanClaimSpouseAsDependent": false,
+    "standardDeduction": 31500,
+    "qbiDeductionForm8995": 0,
+    "additionalDeductionsSchedule1A": 0,
+    "taxableIncomeBeforeLine14": 31500,
+    "taxableIncome": 109920.08
+  },
+  "tax": {
+    "line16Tax": 8213,
+    "schedule2Line3": 0,
+    "line18": 8213,
+    "childTaxCreditAndOdc": 4500,
+    "schedule3Line8": 0,
+    "line21": 4500,
+    "line22": 3713,
+    "otherTaxesSchedule2Line21": 0,
+    "totalTax": 3713
+  },
+  "payments": {
+    "federalWithholdingW2": 17638.11,
+    "federalWithholding1099": 0,
+    "federalWithholdingOther": 0,
+    "line25d": 17638.11,
+    "estimatedTaxPayments2025": 0,
+    "eic": 0,
+    "additionalChildTaxCredit": 0,
+    "americanOpportunityCredit": 0,
+    "refundableAdoptionCredit": 0,
+    "schedule3Line15": 0,
+    "line32OtherPaymentsAndCredits": 0,
+    "totalPayments": 17638.11
+  },
+  "refundOrOwe": {
+    "overpaid": 13925.11,
+    "refundedToYou": 13925.11,
+    "appliedToNextYearEstimatedTax": 0,
+    "amountYouOwe": 0,
+    "estimatedTaxPenalty": 0
+  },
+  "thirdPartyDesignee": {
+    "allowOtherPersonToDiscuss": false
+  },
+  "signature": {
+    "yourOccupation": "Software Engineer",
+    "spouseOccupation": "Graphic Designer",
+    "signatureDate": "2026-04-15",
+    "phone": "3035551212",
+    "email": "jordan.alvarez@example.com"
+  },
+  "paidPreparer": {
+    "selfPrepared": true
+  },
   "_edgeCases": {
     "note": "Deliberate data-quality edge cases included for the renderer demo:",
     "items": [
       "dependents[2] omits an optional 'fullTimeStudent' field to exercise the format default-value path.",
       "income.capitalGainOrLoss is negative to exercise parenthesized negative-currency formatting.",
-      "4 dependents are NOT present (only 3) so the dependents table demonstrates instances below maxInstances; see docs/SPEC.md for what happens when instances EXCEED maxInstances."
+      "4 dependents are NOT present (only 3) so the dependents table demonstrates instances below maxInstances; see docs/SPEC.md for what happens when instances EXCEED maxInstances.",
+      "Page 2 arithmetic (tax, credits, payments, refund) is pre-computed here using simplified-but-internally-consistent arithmetic (a 2-bracket demo tax calc, not the real IRS tax tables) and bound directly, one line to one data value, per docs/SPEC2.md - no two distinct lines share the same aggregate expression the way the earlier page-1-only draft mistakenly did for lines 9 and 11a.",
+      "paidPreparer.selfPrepared=true means the Paid Preparer block on page 2 is intentionally left blank (no preparer); the annotation still defines those fields with defaults so the schema/pipeline is exercised even though nothing draws."
     ]
   }
 }

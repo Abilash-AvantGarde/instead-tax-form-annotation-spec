@@ -43,6 +43,13 @@ public class FieldPlanner {
         if (resolved == null) {
             return; // diagnostic already recorded; nothing to draw
         }
+        boolean ssnValueIsBlank = resolved.value == null || String.valueOf(resolved.value).isBlank();
+        if (field.type == FieldType.ssn && !ssnValueIsBlank && !ssnDigitCountMatchesMask(resolved.value, field.format)) {
+            plan.diagnostics.add(Diagnostic.error(field.id, "VALIDATION_FAILED",
+                    "Value '" + resolved.value + "' does not have the digit count required by mask '" +
+                            (field.format != null ? field.format.maskPattern : "###-##-####") + "'."));
+            return;
+        }
         String text = ValueFormatter.format(resolved.value, field.format, field.type);
         Box box = offset(field.box, dx, dy);
         double fontSize = fitFontSize(field, text, box);
@@ -53,6 +60,13 @@ public class FieldPlanner {
             text = truncateToFit(text, field, box);
         }
         plan.draws.add(new ResolvedDraw(field.id, box, text, fontSize, field.align));
+    }
+
+    private static boolean ssnDigitCountMatchesMask(Object value, com.instead.annotation.model.FormatSpec format) {
+        String mask = format != null ? format.maskPattern : "###-##-####";
+        long expectedDigits = mask.chars().filter(c -> c == '#').count();
+        String digits = String.valueOf(value).replaceAll("[^0-9]", "");
+        return digits.length() == expectedDigits;
     }
 
     private void planCheckbox(Field field, JsonNode scope, double dx, double dy) {
