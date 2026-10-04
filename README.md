@@ -14,7 +14,7 @@ future enhancements).
 spec/
   annotation.schema.json          JSON Schema (2020-12) - the normative spec shape
   f1040-page1.annotation.json     Real annotation of Form 1040 page 1 (~27 fields,
-                                   expanding to 43 drawn marks via the dependents table
+                                   expanding to 44 drawn marks via the dependents table
                                    and filing-status/digital-assets radio & checkbox groups)
 docs/
   SPEC.md                         Full written specification
@@ -38,11 +38,35 @@ output/
                                    pre-built so you can regenerate and inspect it fresh)
 ```
 
-## Build and Run
+## Prerequisites
 
-Requires Java 21 and Maven (confirmed working with Maven 3.9.15).
+Requires **Java 21+** and **Maven**. Check what you have:
 
 ```bash
+java -version
+mvn -version
+```
+
+If either is missing, on macOS:
+
+```bash
+brew install openjdk@21 maven
+```
+
+On Ubuntu/Debian:
+
+```bash
+sudo apt install openjdk-21-jdk maven
+```
+
+(Confirmed working with Java 21 / Maven 3.9.15.)
+
+## Clone and Build
+
+```bash
+git clone https://github.com/Abilash-AvantGarde/instead-tax-form-annotation-spec.git
+cd instead-tax-form-annotation-spec
+
 cd renderer
 mvn clean package
 cd ..
@@ -85,6 +109,8 @@ filing-status and digital-assets boxes show `X` in the correct single box, and t
 table shows three dependents laid out in side-by-side columns.
 
 ## Validating the Annotation Against the Schema
+
+Requires Python 3 with the `jsonschema` package (`pip install jsonschema` if you don't have it):
 
 ```bash
 python3 -c "
