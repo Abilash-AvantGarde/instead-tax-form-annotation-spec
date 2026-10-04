@@ -4,3 +4,6 @@ target/
 *.log
 output/*.pdf
 renderer/dependency-reduced-pom.xml
+node_modules/
+__pycache__/
+*.pyc

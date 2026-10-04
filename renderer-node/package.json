@@ -1,0 +1,13 @@
+{
+  "name": "instead-annotation-renderer-node",
+  "version": "1.0.0",
+  "description": "Node.js reference renderer for the tax form annotation spec (docs/SPEC.md), independently implemented using pdf-lib.",
+  "type": "commonjs",
+  "main": "render.js",
+  "scripts": {
+    "render": "node render.js"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1"
+  }
+}
