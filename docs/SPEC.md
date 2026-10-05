@@ -297,6 +297,70 @@ renderer-agnostic in practice, not just in principle — the plan stage can be u
 PDF library at all, and the same plan could feed a browser-canvas preview, a different PDF
 library, or a non-PDF output entirely.
 
+### 6.1 Conformance Checklist
+
+A renderer can be checked against this list directly, independent of implementation language:
+
+1. A renderer MUST verify `sourcePdf.sha256` against the actual PDF bytes before resolving any
+   field, and MUST refuse to render on a mismatch (`PDF_HASH_MISMATCH`).
+2. A renderer MUST verify `sourcePdf.pageCount` and, if present, `sourcePdf.pageSize` the same
+   way (`PDF_PAGE_COUNT_MISMATCH`, `PDF_PAGE_SIZE_MISMATCH`).
+3. A renderer MUST resolve every field's `value.path` against the supplied data document using
+   only the grammar in section 3 — no filters, no slices, no recursive descent.
+4. A renderer MUST require an `aggregate` whenever a path contains a wildcard, and MUST treat a
+   wildcard path with no declared `aggregate` as an error (`MISSING_AGGREGATE`), never as
+   "take the first match."
+5. A renderer MUST apply `value.default` when a path resolves to nothing, MUST record an error
+   for a missing `required` field with no default (`MISSING_REQUIRED_VALUE`), and MUST record a
+   warning — not an error — for a missing optional field (`MISSING_OPTIONAL_VALUE`).
+6. A renderer MUST apply the field's declared `overflow` policy when formatted text exceeds its
+   box width, and MUST NOT silently clip text under any other policy.
+7. A `radio-group` field MUST resolve to exactly one matching option; zero matches and multiple
+   matches are both errors (`RADIO_GROUP_NO_MATCH`, `RADIO_GROUP_MULTIPLE_MATCHES`), never
+   "pick the first."
+8. A `table` field MUST expand to at most `maxInstances` drawn instances and MUST record a
+   warning, not an error, when the data has more instances than slots
+   (`OVERFLOW_TABLE_INSTANCES`) — the rest of the form must still render.
+9. A renderer MUST collect every diagnostic across the entire document in one pass before
+   drawing anything — it MUST NOT stop at the first problem found.
+10. A renderer MUST NOT write any output file if any collected diagnostic is error-level.
+11. A renderer SHOULD avoid including a field's raw resolved value in diagnostic messages where
+    that value could be a taxpayer identifier (SSN, EIN, account numbers). The reference
+    implementation does not yet fully satisfy this for `VALIDATION_FAILED` on SSN fields — see
+    section 9 — and diagnostics should not be routed to a shared or persistent log sink without
+    that gap being closed first.
+
+A renderer that satisfies all eleven can read any annotation conforming to
+`annotation.schema.json` and produce output indistinguishable, field for field, from the
+reference implementation — this repository ships three such renderers (Java, Python, Node) as
+evidence, see `docs/SPEC2.md`.
+
+### 6.2 Diagnostic Codes
+
+Every diagnostic a conformant renderer may emit, with its severity and what it means. A renderer
+MAY add its own codes for conditions this spec doesn't anticipate, but MUST NOT repurpose one of
+these codes for a different condition.
+
+| Code | Severity | Meaning | How an annotator fixes it |
+|---|---|---|---|
+| `PDF_HASH_MISMATCH` | Error | The supplied PDF's SHA-256 doesn't match `sourcePdf.sha256` | Confirm you have the right PDF revision, or re-annotate against this one and update the hash |
+| `PDF_PAGE_COUNT_MISMATCH` | Error | The PDF's page count doesn't match `sourcePdf.pageCount` | Same as above — wrong file or stale hash |
+| `PDF_PAGE_SIZE_MISMATCH` | Error | Page 1's dimensions don't match `sourcePdf.pageSize` | Same as above |
+| `MISSING_BINDING` | Error | A `required` field has no `value` block at all | Add a `value.path` to the field definition |
+| `MISSING_AGGREGATE` | Error | A wildcard path (`[*]`) has no `aggregate` declared | Add `"aggregate": "sum"` (or `count`/`first`/`join`) to the binding |
+| `MISSING_REQUIRED_VALUE` | Error | A `required` field's path resolved to nothing and there's no `default` | Supply the value in the data document, or add a `default` if blank is acceptable |
+| `MISSING_OPTIONAL_VALUE` | Warning | A non-required field's path resolved to nothing | Informational — the field is drawn blank. Supply the value if it should appear |
+| `VALIDATION_FAILED` | Error | A resolved value fails a type-specific validation rule (e.g. an SSN's digit count doesn't match its mask) | Fix the underlying data value |
+| `RADIO_GROUP_NO_OPTIONS` | Error | A `radio-group` field declares zero `options` | Add at least one option to the field definition |
+| `RADIO_GROUP_NO_MATCH` | Error | The resolved value matches none of the group's `option.matchValue`s | Fix the data value, or add a matching option |
+| `RADIO_GROUP_MULTIPLE_MATCHES` | Error | The resolved value matches more than one option — ambiguous | Fix the annotation so `matchValue`s are mutually exclusive |
+| `TABLE_INCOMPLETE` | Error | A `table` field is missing `itemsPath`, `columns`, `pitch`, or `maxInstances` | Add the missing table configuration |
+| `TABLE_AXIS_PITCH_MISMATCH` | Warning | The declared `axis` doesn't match the direction `pitch` actually moves in | Align `axis` with `pitch.dx`/`pitch.dy`, or remove the (then-misleading) `axis` |
+| `OVERFLOW_TABLE_INSTANCES` | Warning | The data has more instances than `maxInstances` slots | Informational — excess instances aren't drawn. Increase `maxInstances` if the form has more slots than declared |
+| `OVERFLOW_SHRINK_FLOOR` | Warning | Text still doesn't fit the box even at `minFontSize` under a `shrink` policy | Shorten the data, widen the box, or lower `minFontSize` further |
+| `OVERFLOW_TRUNCATED` | Warning | Text was cut short with an ellipsis under a `truncate` policy | Informational, unless the truncation loses meaning — widen the box if so |
+| `OVERFLOW_ERROR` | Error | Text doesn't fit the box and the field's policy is `error` | The field's data is unexpectedly long for a box designed not to tolerate overflow (e.g. a comb-style SSN) — investigate the data |
+
 ## 7. Design Decisions
 
 **Why PDF points with an explicit top-left origin, not normalized 0-1 coordinates.** Normalized
@@ -396,6 +460,35 @@ own `--debug` overlay, see section 9) before being trusted for real tax filings.
   renderer could fill those directly (more accessible, more robust to minor layout drift) and
   fall back to coordinate-based drawing only for static-rendered forms — today this spec commits
   to coordinate-based drawing exclusively.
+- **Redacting taxpayer values out of diagnostic messages.** `VALIDATION_FAILED` on an `ssn` field
+  currently interpolates the raw resolved value into its message (see section 6.1, item 11) so
+  the diagnostic is actionable — but on a tax platform, diagnostics should assume they may reach
+  a shared log sink. A `sensitive: true` flag on a field, honored by truncating or masking the
+  value in any diagnostic text, would close this without losing the "what's wrong" signal.
+- **Treating cross-renderer disagreement as a spec-quality signal.** This repository ships three
+  independently-built renderers that currently agree on every observable output (`docs/SPEC2.md`).
+  That agreement is normally read as evidence the spec is portable — but it can also be read the
+  other way: if two renderers that both genuinely conform to this document ever produce different
+  output from the same annotation, that is a defect in the specification's prose, not in either
+  implementation. A future revision could formalize this as part of the acceptance process for
+  spec changes, run as a differential check across implementations.
+- **Mechanical glyph-collision detection.** Two coordinate-placement defects were found during
+  development by a human visually inspecting rendered output (see `docs/SPEC2.md` section 1 and
+  `docs/TEST_FIXTURES.md` section 4) — drawn text overlapping the form's own printed labels. This
+  is mechanically detectable: render a sentinel value into each declared box, re-extract text
+  positions, and assert no drawn glyph's bounding box intersects the blank form's own glyphs. A
+  tool like this would have caught both incidents automatically rather than by eye.
+- **Cross-document fact composition.** The same taxpayer fact — wages, withholding, an SSN —
+  appears on a W-2, a federal 1040, and potentially a state return, each with its own annotation
+  file and its own path into its own data document today. Nothing in this spec relates those
+  three bindings as "the same underlying fact." Formats that solve this at scale (e.g. XBRL's
+  split between a taxonomy of concepts, a presentation layer, and per-filing instance documents)
+  point at the likely shape of an answer; this spec doesn't attempt it.
+- **Accessibility.** Tagged-PDF / screen-reader support can't be solved at the annotation layer
+  alone: the blank IRS source PDFs this spec annotates are themselves untagged, so tagging only
+  the drawn overlay would produce a document where the values are accessible and their labels
+  are not — arguably worse than the current untagged state. Solving this properly means starting
+  from a tagged source PDF, which is outside this spec's control.
 
 ## 10. Non-Goals (v1)
 
