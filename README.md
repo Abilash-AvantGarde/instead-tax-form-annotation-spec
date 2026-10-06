@@ -5,6 +5,8 @@ values in a nested taxpayer data set, and how to format them — plus three inde
 reference renderers (Java, Python, Node.js) that prove the spec against the real 2025 IRS
 Form 1040 (both pages) and a complete Form W-2.
 
+**Walkthrough video:** https://www.loom.com/share/a060973f883a4e96a27f5e949d0e8f3a
+
 **Start here:** [`docs/SPEC.md`](docs/SPEC.md) — the full specification (coordinate system,
 data-binding grammar, every field type, the rendering pipeline contract, design decisions, and
 future enhancements). [`docs/SPEC2.md`](docs/SPEC2.md) — the worked-examples/portability-proof
@@ -24,7 +26,6 @@ docs/
   SPEC.md                         Full written specification
   SPEC2.md                        Worked examples: page-2 1040 arithmetic, the W-2, and the
                                    Java/Python/Node cross-renderer value comparison
-  VIDEO_OUTLINE.md                Timed script for the <=5 min walkthrough video
 data/
   sample-taxpayer.json            Realistic nested taxpayer data (2 W-2s, 3 dependents,
                                    a negative capital-loss figure, a missing optional field,
@@ -218,4 +219,3 @@ for path in ['spec/f1040.annotation.json', 'spec/fw2.annotation.json']:
 
 - [`docs/SPEC2.md`](docs/SPEC2.md) — worked examples: Form 1040 page 2 arithmetic, the
   Form W-2 annotation, and the full Java/Python/Node cross-renderer value comparison.
-- [`docs/VIDEO_OUTLINE.md`](docs/VIDEO_OUTLINE.md) — timed script for the walkthrough video.
